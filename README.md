@@ -4,7 +4,7 @@
 
 ---
 
-I built this to show the full data engineering side of fraud analytics — not just the model, but the pipeline that makes the model possible.
+I built this to show the full data engineering side of fraud analytics - not just the model, but the pipeline that makes the model possible.
 
 Most fraud detection projects start with a clean dataset. This one builds the infrastructure that produces it: extract raw transaction data, handle the mess that comes with it, engineer the features that actually matter for fraud detection, and load the result somewhere useful.
 
@@ -16,13 +16,13 @@ Most fraud detection projects start with a clean dataset. This one builds the in
 EXTRACT → TRANSFORM → LOAD
 ```
 
-**Extract** — generates 10,000 synthetic credit card transactions with realistic merchant distributions, cardholder velocity patterns, and intentional data quality issues (nulls, duplicates, invalid amounts). In production this step would be replaced by an API call or database query — everything downstream stays the same.
+**Extract** - generates 10,000 synthetic credit card transactions with realistic merchant distributions, cardholder velocity patterns, and intentional data quality issues (nulls, duplicates, invalid amounts). In production this step would be replaced by an API call or database query - everything downstream stays the same.
 
-**Transform** — two stages:
+**Transform** - two stages:
 - *Clean:* drops duplicates, null amounts, and transactions with invalid values
 - *Feature engineering:* adds five fraud-signal columns and a composite risk score
 
-**Load** — writes to SQLite (queryable with SQL) and two CSVs: the full enriched dataset and a separate high-risk alerts file for analyst review.
+**Load** - writes to SQLite (queryable with SQL) and two CSVs: the full enriched dataset and a separate high-risk alerts file for analyst review.
 
 ---
 
@@ -30,14 +30,14 @@ EXTRACT → TRANSFORM → LOAD
 
 | Feature | What it captures |
 |---|---|
-| `amount_zscore` | Spend standardised within merchant category — flags unusual amounts relative to what's normal for that type of merchant |
+| `amount_zscore` | Spend standardised within merchant category - flags unusual amounts relative to what's normal for that type of merchant |
 | `is_high_amount` | Transactions in the top 5% of spend |
 | `is_night` | Transactions between midnight and 5 AM |
 | `velocity_flag` | Cards with 4+ transactions in the prior hour |
 | `risk_score` | Weighted composite (0–100) combining all signals |
 | `risk_tier` | LOW / MEDIUM / HIGH bucket for analyst triage |
 
-The risk score weights reflect actual fraud signal importance — velocity is weighted highest because automated abuse is the strongest indicator; time-of-day is weighted lowest because it's correlated but not deterministic.
+The risk score weights reflect actual fraud signal importance - velocity is weighted highest because automated abuse is the strongest indicator; time-of-day is weighted lowest because it's correlated but not deterministic.
 
 ---
 
@@ -57,11 +57,11 @@ python -m pytest tests/ -v
 
 Output:
 ```
-[1/3] EXTRACT — generating 10000 raw transactions
+[1/3] EXTRACT - generating 10000 raw transactions
       Extracted 10100 rows, 11 columns
-[2/3] TRANSFORM — cleaning & engineering features
+[2/3] TRANSFORM - cleaning & engineering features
       Transformed to 9753 rows, 17 columns
-[3/3] LOAD — writing to SQLite + CSV
+[3/3] LOAD - writing to SQLite + CSV
       Rows loaded: 9753
 Pipeline complete. High-risk transactions: 51 (0.5%)
 ```
@@ -90,9 +90,9 @@ fraud-etl-pipeline/
 
 ## Why I built it this way
 
-Keeping the three stages as separate modules means swapping any one of them out doesn't touch the others. Replace `extract.py` with a real API call, change `load.py` to write to Postgres or Snowflake — the transform logic stays exactly the same. That's the design decision that matters most in production pipelines.
+Keeping the three stages as separate modules means swapping any one of them out doesn't touch the others. Replace `extract.py` with a real API call, change `load.py` to write to Postgres or Snowflake - the transform logic stays exactly the same. That's the design decision that matters most in production pipelines.
 
-The synthetic data generator injects real data quality problems on purpose: nulls from missing source fields, duplicates from double-posted transactions, out-of-range values from upstream data entry errors. Handling these isn't a footnote — it's most of the actual work.
+The synthetic data generator injects real data quality problems on purpose: nulls from missing source fields, duplicates from double-posted transactions, out-of-range values from upstream data entry errors. Handling these isn't a footnote - it's most of the actual work.
 
 ---
 
@@ -102,4 +102,4 @@ The output of this pipeline feeds directly into a fraud classification model. `i
 
 ---
 
-*Shaneeza Hasnani — CFE · MS Business Analytics & AI · [linkedin.com/in/shasnani](https://linkedin.com/in/shasnani)*
+*Shaneeza Hasnani - CFE · MS Business Analytics & AI · [linkedin.com/in/shasnani](https://linkedin.com/in/shasnani)*
