@@ -1,165 +1,105 @@
 # Fraud Transaction ETL Pipeline
 
-A clean, modular Python ETL pipeline that extracts synthetic credit-card transaction data, applies data quality rules and fraud-signal feature engineering, and loads the enriched output to SQLite and CSV.
-
-Built to demonstrate production ETL practices in a financial crime context — the domain where this kind of pipeline actually gets used.
+**Python · pandas · NumPy · SQLite · pytest**
 
 ---
 
-## What It Does
+I built this to show the full data engineering side of fraud analytics — not just the model, but the pipeline that makes the model possible.
+
+Most fraud detection projects start with a clean dataset. This one builds the infrastructure that produces it: extract raw transaction data, handle the mess that comes with it, engineer the features that actually matter for fraud detection, and load the result somewhere useful.
+
+---
+
+## What it does
 
 ```
 EXTRACT → TRANSFORM → LOAD
 ```
 
-| Stage | What happens |
+**Extract** — generates 10,000 synthetic credit card transactions with realistic merchant distributions, cardholder velocity patterns, and intentional data quality issues (nulls, duplicates, invalid amounts). In production this step would be replaced by an API call or database query — everything downstream stays the same.
+
+**Transform** — two stages:
+- *Clean:* drops duplicates, null amounts, and transactions with invalid values
+- *Feature engineering:* adds five fraud-signal columns and a composite risk score
+
+**Load** — writes to SQLite (queryable with SQL) and two CSVs: the full enriched dataset and a separate high-risk alerts file for analyst review.
+
+---
+
+## Features engineered
+
+| Feature | What it captures |
 |---|---|
-| **Extract** | Generates 10,000+ synthetic transactions with realistic merchant distributions, cardholder velocity patterns, and intentional data quality issues (nulls, duplicates, invalid amounts) |
-| **Transform** | Stage 1 cleans the raw data; Stage 2 engineers five fraud-signal features and produces a composite risk score with tier bucketing |
-| **Load** | Writes to SQLite (two tables) + two CSV exports: full cleaned dataset and a high-risk alerts file |
+| `amount_zscore` | Spend standardised within merchant category — flags unusual amounts relative to what's normal for that type of merchant |
+| `is_high_amount` | Transactions in the top 5% of spend |
+| `is_night` | Transactions between midnight and 5 AM |
+| `velocity_flag` | Cards with 4+ transactions in the prior hour |
+| `risk_score` | Weighted composite (0–100) combining all signals |
+| `risk_tier` | LOW / MEDIUM / HIGH bucket for analyst triage |
+
+The risk score weights reflect actual fraud signal importance — velocity is weighted highest because automated abuse is the strongest indicator; time-of-day is weighted lowest because it's correlated but not deterministic.
 
 ---
 
-## Feature Engineering
-
-The transform step produces the following features on top of the raw transaction fields:
-
-| Feature | Description |
-|---|---|
-| `amount_zscore` | Spend standardised within merchant category — flags unusual amounts relative to that category's typical range |
-| `is_high_amount` | Binary flag for transactions in the 95th percentile of spend |
-| `is_night` | Binary flag for transactions between midnight–5 AM |
-| `velocity_flag` | Binary flag for ≥ 4 transactions on the same card in the prior hour |
-| `risk_score` | Weighted composite score (0–100) aggregating all signals |
-| `risk_tier` | Categorical bucket: LOW / MEDIUM / HIGH |
-
-**Risk score weights** reflect the empirical importance of each signal in financial crime detection:
-
-```
-velocity_flag   × 35   ← high-frequency abuse is the strongest indicator
-is_foreign      × 25   ← card-not-present / cross-border uplift  
-is_high_amount  × 20   ← unusually large spend
-amount_zscore   × 15   ← spend anomalous for that merchant category
-is_night        ×  5   ← off-hours signal
-```
-
----
-
-## Project Structure
-
-```
-fraud-etl-pipeline/
-├── pipeline.py          # Orchestrator — runs the full ETL
-├── src/
-│   ├── extract.py       # Data generation / extraction layer
-│   ├── transform.py     # Cleaning + feature engineering
-│   ├── load.py          # SQLite + CSV output
-│   └── logger.py        # Centralised logging (console + file)
-├── tests/
-│   └── test_pipeline.py # 27 unit + integration tests (pytest)
-├── data/
-│   ├── raw/             # Would hold source files in a real pipeline
-│   └── processed/
-│       ├── transactions.db          # SQLite: transactions + risk_summary tables
-│       ├── transactions_clean.csv   # Full enriched dataset
-│       └── high_risk_alerts.csv     # HIGH-tier transactions for analyst review
-├── logs/                # Timestamped run logs
-└── requirements.txt
-```
-
----
-
-## Quickstart
+## Running it
 
 ```bash
-# Clone and install
 git clone https://github.com/shaneeza-hasnani/fraud-etl-pipeline
 cd fraud-etl-pipeline
 pip install -r requirements.txt
 
-# Run the pipeline (default: 10,000 transactions)
+# Run the pipeline
 python pipeline.py
-
-# Custom record count and output path
-python pipeline.py --records 50000 --db data/processed/transactions.db
 
 # Run tests
 python -m pytest tests/ -v
 ```
 
-**Sample output:**
+Output:
 ```
-2024-01-15 09:12:03  INFO  __main__ — ============================================================
-2024-01-15 09:12:03  INFO  __main__ — FRAUD ETL PIPELINE — starting run
-2024-01-15 09:12:03  INFO  __main__ — ============================================================
-2024-01-15 09:12:03  INFO  __main__ — [1/3] EXTRACT — generating 10000 raw transactions
-2024-01-15 09:12:03  INFO  __main__ —       Extracted 10100 rows, 11 columns
-2024-01-15 09:12:03  INFO  __main__ — [2/3] TRANSFORM — cleaning & engineering features
-2024-01-15 09:12:03  INFO  __main__ —       Transformed to 9753 rows, 17 columns
-2024-01-15 09:12:03  INFO  __main__ — [3/3] LOAD — writing to SQLite + CSV
-2024-01-15 09:12:03  INFO  __main__ —       Rows loaded:    9753
-2024-01-15 09:12:04  INFO  __main__ — Pipeline complete. High-risk transactions: 51 (0.5%)
+[1/3] EXTRACT — generating 10000 raw transactions
+      Extracted 10100 rows, 11 columns
+[2/3] TRANSFORM — cleaning & engineering features
+      Transformed to 9753 rows, 17 columns
+[3/3] LOAD — writing to SQLite + CSV
+      Rows loaded: 9753
+Pipeline complete. High-risk transactions: 51 (0.5%)
 ```
 
 ---
 
-## Querying the Output
+## Project structure
 
-The SQLite database includes a pre-built `risk_summary` table:
-
-```sql
--- Connect
-sqlite3 data/processed/transactions.db
-
--- Fraud rate by risk tier
-SELECT risk_tier,
-       SUM(fraud_count) AS fraud_txns,
-       SUM(transaction_count) AS total_txns,
-       ROUND(100.0 * SUM(fraud_count) / SUM(transaction_count), 2) AS fraud_rate_pct
-FROM risk_summary
-GROUP BY risk_tier
-ORDER BY fraud_rate_pct DESC;
-
--- Top merchant categories by high-risk volume
-SELECT merchant_category,
-       SUM(transaction_count) AS txns,
-       ROUND(AVG(avg_amount), 2) AS avg_spend
-FROM risk_summary
-WHERE risk_tier = 'HIGH'
-GROUP BY merchant_category
-ORDER BY txns DESC;
+```
+fraud-etl-pipeline/
+├── pipeline.py          # Orchestrator
+├── src/
+│   ├── extract.py       # Data generation / extraction
+│   ├── transform.py     # Cleaning + feature engineering
+│   ├── load.py          # SQLite + CSV output
+│   └── logger.py        # Timestamped logging
+├── tests/
+│   └── test_pipeline.py # 27 unit and integration tests
+└── data/processed/
+    ├── transactions.db          # SQLite output
+    ├── transactions_clean.csv   # Full enriched dataset
+    └── high_risk_alerts.csv     # HIGH-tier records only
 ```
 
 ---
 
-## Design Decisions
+## Why I built it this way
 
-**Why SQLite?**
-Keeps the project self-contained and runnable without infrastructure. The `load.py` module's `_write_sqlite()` function maps directly to any SQLAlchemy-compatible database (Postgres, Snowflake) — swap the connection string and nothing else changes.
+Keeping the three stages as separate modules means swapping any one of them out doesn't touch the others. Replace `extract.py` with a real API call, change `load.py` to write to Postgres or Snowflake — the transform logic stays exactly the same. That's the design decision that matters most in production pipelines.
 
-**Why synthetic data?**
-Real transaction data carries PII and can't be committed to a public repo. The synthetic generator (`extract.py`) reproduces realistic statistical properties: category-specific spend distributions, cardholder velocity patterns, and a fraud rate (~3–8%) driven by the same signals a real fraud model would use.
-
-**Why not use a workflow tool (Airflow, Prefect)?**
-Intentional simplicity. The three-module structure (`extract` → `transform` → `load`) maps directly onto how these tools decompose pipelines. Wrapping `pipeline.py` in an Airflow DAG would take under 20 lines and is the obvious next step.
+The synthetic data generator injects real data quality problems on purpose: nulls from missing source fields, duplicates from double-posted transactions, out-of-range values from upstream data entry errors. Handling these isn't a footnote — it's most of the actual work.
 
 ---
 
-## Next Steps
+## What's next
 
-This pipeline produces a risk-scored dataset ready for:
-
-- **ML model training** — `is_fraud` is the label; the five engineered features are strong predictors
-- **Dashboard integration** — `high_risk_alerts.csv` is formatted for direct Power BI / Tableau ingestion
-- **Scheduling** — orchestrate with Airflow, Prefect, or a simple cron job
-- **Real data sources** — replace `extract.py` with an API call, S3 pull, or database query; the rest is unchanged
+The output of this pipeline feeds directly into a fraud classification model. `is_fraud` is the label; the five engineered features are strong predictors. That's the natural next step.
 
 ---
 
-## Stack
-
-Python 3.11+ · pandas · NumPy · SQLite · pytest
-
----
-
-*Shaneeza Hasnani — CFE · Data Scientist · [linkedin.com/in/shasnani](https://linkedin.com/in/shasnani)*
+*Shaneeza Hasnani — CFE · MS Business Analytics & AI · [linkedin.com/in/shasnani](https://linkedin.com/in/shasnani)*
