@@ -1,0 +1,25 @@
+2026-06-03 19:34:13  DEBUG     src.extract — Generating 500 synthetic transactions with seed=42
+2026-06-03 19:34:13  DEBUG     src.extract — Raw data shape: (505, 11) | Fraud rate: 3.17%
+2026-06-03 19:34:14  DEBUG     src.transform — Running Stage 1 — Data Quality (505 rows in)
+2026-06-03 19:34:14  DEBUG     src.transform —   drop_duplicates: removed 5 rows
+2026-06-03 19:34:14  DEBUG     src.transform —   drop_null_amounts: removed 10 rows
+2026-06-03 19:34:14  DEBUG     src.transform —   remove_invalid_amounts: removed 2 rows (range: $0.01–$9999.99)
+2026-06-03 19:34:14  DEBUG     src.transform — Stage 1 complete — 488 rows out
+2026-06-03 19:34:14  DEBUG     src.transform — Running Stage 1 — Data Quality (505 rows in)
+2026-06-03 19:34:14  DEBUG     src.transform —   drop_duplicates: removed 5 rows
+2026-06-03 19:34:14  DEBUG     src.transform —   drop_null_amounts: removed 10 rows
+2026-06-03 19:34:14  DEBUG     src.transform —   remove_invalid_amounts: removed 2 rows (range: $0.01–$9999.99)
+2026-06-03 19:34:14  DEBUG     src.transform — Stage 1 complete — 488 rows out
+2026-06-03 19:34:14  DEBUG     src.transform — Running Stage 2 — Feature Engineering (488 rows in)
+2026-06-03 19:34:14  DEBUG     src.transform —   high_amount threshold (p95): $587.83
+2026-06-03 19:34:14  DEBUG     src.transform — Stage 2 complete — 17 columns out
+2026-06-03 19:34:14  DEBUG     src.extract — Generating 200 synthetic transactions with seed=42
+2026-06-03 19:34:14  DEBUG     src.extract — Raw data shape: (202, 11) | Fraud rate: 2.48%
+2026-06-03 19:34:14  DEBUG     src.transform — Running Stage 1 — Data Quality (202 rows in)
+2026-06-03 19:34:14  DEBUG     src.transform —   drop_duplicates: removed 2 rows
+2026-06-03 19:34:14  DEBUG     src.transform —   drop_null_amounts: removed 4 rows
+2026-06-03 19:34:14  DEBUG     src.transform —   remove_invalid_amounts: removed 1 rows (range: $0.01–$9999.99)
+2026-06-03 19:34:14  DEBUG     src.transform — Stage 1 complete — 195 rows out
+2026-06-03 19:34:14  DEBUG     src.transform — Running Stage 2 — Feature Engineering (195 rows in)
+2026-06-03 19:34:14  DEBUG     src.transform —   high_amount threshold (p95): $585.53
+2026-06-03 19:34:14  DEBUG     src.transform — Stage 2 complete — 17 columns out
